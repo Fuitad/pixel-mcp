@@ -159,6 +159,35 @@ end
 `
 }
 
+// ReassertIndexedTransparentColor returns a Lua snippet that pins an indexed
+// sprite's transparentColor back to 255 after the palette has been resized.
+//
+// CreateCanvas sets Sprite.transparentColor to 255 for indexed sprites so that
+// palette index 0 can hold a real, opaque color instead of being silently
+// treated as transparent (see the palette index 0 fix). However, Aseprite
+// automatically clamps Sprite.transparentColor into the current palette's
+// valid index range whenever Palette:resize shrinks the palette below 256
+// colors. For a locked N-color palette (N < 256), transparentColor ends up
+// equal to N-1, i.e. the last real color the caller just set.
+//
+// Once that collision happens, any operation that paints "transparent"
+// (for example fill_area's paint bucket, or fully-transparent pixels in an
+// imported image) writes the sprite's designated transparent index, which is
+// now indistinguishable from that last real color: reading it back reports
+// the real color's opaque RGBA instead of transparency, and a pixel
+// deliberately drawn in that color can be auto-trimmed away as if it were
+// transparent.
+//
+// Call this immediately after any Palette:resize on an indexed sprite (and
+// before spr:saveAs) to keep transparentColor safely out of the palette's
+// real, addressable range.
+func ReassertIndexedTransparentColor() string {
+	return `if spr.colorMode == ColorMode.INDEXED then
+	spr.transparentColor = 255
+end
+`
+}
+
 // FormatPoint formats a Point as a Lua Point constructor call.
 //
 // Returns a string like "Point(10, 20)" suitable for embedding in Lua scripts.

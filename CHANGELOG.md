@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Indexed palette: transparentColor collides with a real color after resize**
+  - `Palette:resize` silently clamps `Sprite.transparentColor` into the new
+    palette's valid index range, so after `set_palette`, `quantize_palette`,
+    `add_palette_color`, or `apply_auto_shading` resize an indexed sprite's
+    palette, the sprite's transparent-color index can land on the same index
+    as a real, in-use color (typically the palette's last entry)
+  - Once that collision happens, painting "transparent" (e.g. `fill_area`
+    with a fully-transparent color) writes that colliding index, so
+    background fills read back as an opaque real color instead of
+    transparent, and pixels intentionally drawn in that color can be
+    auto-trimmed away as if they were transparent
+  - Fixed by re-asserting `transparentColor = 255` after every palette
+    resize on an indexed sprite, keeping it safely out of the palette's
+    real, addressable range
+
 ## [0.5.0] - 2025-10-18
 
 ### Added
