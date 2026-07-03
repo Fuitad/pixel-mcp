@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **draw_pixels: a later call reverts previously-transparent pixels to opaque black**
+  - On an indexed sprite `CreateCanvas` sets `Sprite.transparentColor` to 255 so
+    palette index 0 can hold a real color, which means index 0 is opaque. When
+    `draw_pixels` normalizes the target cel it builds a full-canvas image with
+    `Image(spr.width, spr.height, spr.colorMode)`, and a freshly created indexed
+    image is filled with index 0 (opaque), not the transparent index
+  - Compositing the existing content with the default NORMAL blend
+    (`full:drawImage(cel.image, cel.position)`) skips the source's transparent
+    (index 255) pixels, so every pixel a previous call had made transparent but
+    the current call does not rewrite is left showing the opaque index-0
+    background, silently turning transparent areas into opaque black (the exact
+    symptom warned about for locked-palette sprites)
+  - Fixed by clearing the full-canvas image to the sprite's transparent color
+    (`full:clear(spr.transparentColor)`) before compositing/drawing on indexed
+    sprites, in both the existing-cel and new-cel paths; RGB and grayscale
+    behavior is unchanged
+- **create_canvas: a new indexed canvas starts opaque instead of transparent**
+  - A new indexed sprite's initial cel is filled with palette index 0, but
+    `CreateCanvas` designates index 255 as the transparent color, so index 0 is
+    an opaque color (black on DawnBringer 32) and a fresh canvas read back as an
+    opaque background rather than transparent
+  - Fixed by clearing the initial cel to the sprite's transparent color right
+    after creation, so a fresh indexed canvas is genuinely transparent; RGB and
+    grayscale are unaffected
 - **quantize_palette: median cut blends distinct colors under imbalanced pixel frequency**
   - `MedianCutQuantization` split each bucket at the pixel-array midpoint
     (`mid := len(pixels) / 2`), not at a boundary between distinct colors.

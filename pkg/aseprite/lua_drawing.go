@@ -70,6 +70,15 @@ app.transaction(function()
 		-- this, Image:putPixel uses cel-local coordinates and pixels are offset
 		-- by the cel's position whenever content does not start at (0,0).
 		local full = Image(spr.width, spr.height, spr.colorMode)
+		-- A freshly created indexed Image is filled with index 0, but on these
+		-- sprites the transparent index is 255 (set by CreateCanvas). Clear the
+		-- new image to the sprite's transparent color first; otherwise the
+		-- default (NORMAL blend) drawImage below skips the source's transparent
+		-- pixels and leaves the opaque index-0 background showing through,
+		-- silently turning already-transparent pixels into opaque black.
+		if spr.colorMode == ColorMode.INDEXED then
+			full:clear(spr.transparentColor)
+		end
 		full:drawImage(cel.image, cel.position)
 		cel.image = full
 		cel.position = Point(0, 0)
@@ -77,6 +86,12 @@ app.transaction(function()
 		-- No cel yet (or nil image, e.g. a freshly added layer): create a
 		-- full-canvas cel WITH an image so putPixel has a valid target.
 		local full = Image(spr.width, spr.height, spr.colorMode)
+		-- Same transparent-background fix as above: without clearing to the
+		-- transparent index, every untouched pixel of a new indexed cel would be
+		-- opaque index 0 instead of transparent.
+		if spr.colorMode == ColorMode.INDEXED then
+			full:clear(spr.transparentColor)
+		end
 		cel = spr:newCel(layer, frame, full, Point(0, 0))
 	end
 
